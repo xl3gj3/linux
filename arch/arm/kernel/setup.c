@@ -715,7 +715,7 @@ void __init setup_arch(char **cmdline_p)
 
 	parse_early_param();
 
-	arm_lmb_init(&meminfo, mdesc);
+	arm_lmb_init(&meminfo);
 
 	paging_init(mdesc);
 	request_standard_resources(&meminfo, mdesc);

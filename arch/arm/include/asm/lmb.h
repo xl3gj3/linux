@@ -9,8 +9,7 @@ extern phys_addr_t lowmem_end_addr;
 #endif
 
 struct meminfo;
-struct machine_desc;
 
-extern void arm_lmb_init(struct meminfo *, struct machine_desc *);
+extern void arm_lmb_init(struct meminfo *);
 
 #endif
