@@ -26,7 +26,7 @@
 #include <linux/mm.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
-#include <linux/lmb.h>
+#include <linux/bootmem.h>
 #include <linux/io.h>
 #include <linux/omapfb.h>
 
@@ -171,54 +171,49 @@ static int check_fbmem_region(int region_idx, struct omapfb_mem_region *rg,
 	return 0;
 }
 
-void __init omapfb_reserve_sdram_lmb(void)
+/*
+ * Called from map_io. We need to call to this early enough so that we
+ * can reserve the fixed SDRAM regions before VM could get hold of them.
+ */
+void __init omapfb_reserve_sdram(void)
 {
-	unsigned long reserved = 0;
-	int i;
+	struct bootmem_data	*bdata;
+	unsigned long		sdram_start, sdram_size;
+	unsigned long		reserved;
+	int			i;
 
+	if (config_invalid)
+		return;
+
+	bdata = NODE_DATA(0)->bdata;
+	sdram_start = bdata->node_min_pfn << PAGE_SHIFT;
+	sdram_size = (bdata->node_low_pfn << PAGE_SHIFT) - sdram_start;
+	reserved = 0;
 	for (i = 0; ; i++) {
-		struct omapfb_mem_region rg;
-		struct lmb_property res;
+		struct omapfb_mem_region	rg;
 
 		if (get_fbmem_region(i, &rg) < 0)
 			break;
-
 		if (i == OMAPFB_PLANE_NUM) {
-			pr_err("Extraneous FB mem configuration entries\n");
+			printk(KERN_ERR
+				"Extraneous FB mem configuration entries\n");
 			config_invalid = 1;
 			return;
 		}
-
 		/* Check if it's our memory type. */
-		if (rg.type != 0 && rg.type != OMAPFB_MEMTYPE_SDRAM)
+		if (set_fbmem_region_type(&rg, OMAPFB_MEMTYPE_SDRAM,
+				          sdram_start, sdram_size) < 0 ||
+		    (rg.type != OMAPFB_MEMTYPE_SDRAM))
 			continue;
-
-		/* Does it fall within SDRAM ? */
-		res.base = rg.paddr;
-		res.size = rg.size;
-		if (lmb_find(&res) || res.base != rg.paddr || res.size != rg.size)
-			continue;
-
-		rg.type = OMAPFB_MEMTYPE_SDRAM;
-
-		if (rg.size == 0) {
-			pr_err("Zero size for FB region %d\n", i);
+		BUG_ON(omapfb_config.mem_desc.region[i].size);
+		if (check_fbmem_region(i, &rg, sdram_start, sdram_size) < 0) {
 			config_invalid = 1;
 			return;
 		}
-
 		if (rg.paddr) {
-			if (lmb_is_region_reserved(rg.paddr, rg.size)) {
-				pr_err("Trying to use reserved memory for FB region %d\n", i);
-				config_invalid = 1;
-				return;
-			}
-
-			lmb_reserve(rg.paddr, rg.size);
+			reserve_bootmem(rg.paddr, rg.size, BOOTMEM_DEFAULT);
 			reserved += rg.size;
 		}
-
-		BUG_ON(omapfb_config.mem_desc.region[i].size);
 		omapfb_config.mem_desc.region[i] = rg;
 		configured_regions++;
 	}
@@ -364,10 +359,7 @@ static inline int omap_init_fb(void)
 
 arch_initcall(omap_init_fb);
 
-void omapfb_reserve_sdram_lmb(void)
-{
-}
-
+void omapfb_reserve_sdram(void) {}
 unsigned long omapfb_reserve_sram(unsigned long sram_pstart,
 				  unsigned long sram_vstart,
 				  unsigned long sram_size,
@@ -383,10 +375,7 @@ void omapfb_set_platform_data(struct omapfb_platform_data *data)
 {
 }
 
-void omapfb_reserve_sdram_lmb(void)
-{
-}
-
+void omapfb_reserve_sdram(void) {}
 unsigned long omapfb_reserve_sram(unsigned long sram_pstart,
 				  unsigned long sram_vstart,
 				  unsigned long sram_size,

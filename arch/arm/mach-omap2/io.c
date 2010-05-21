@@ -241,6 +241,7 @@ static void __init _omap2_map_common_io(void)
 
 	omap2_check_revision();
 	omap_sram_init();
+	omapfb_reserve_sdram();
 	omap_vram_reserve_sdram();
 }
 
@@ -348,9 +349,3 @@ void __init omap2_init_common_hw(struct omap_sdrc_params *sdrc_cs0,
 	}
 	gpmc_init();
 }
-
-void __init omap2_reserve(void)
-{
-	omapfb_reserve_sdram_lmb();
-}
-
