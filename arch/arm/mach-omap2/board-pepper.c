@@ -21,6 +21,9 @@
 #include <linux/err.h>
 #include <linux/reboot.h>
 
+#include <linux/phy.h>
+#include <linux/micrel_phy.h>
+
 #include <mach/hardware.h>
 
 #include <asm/mach-types.h>
@@ -327,6 +330,17 @@ static void pepper_i2c_init(void)
 
 /* board init */
 
+static int ksz9021rn_phy_fixup(struct phy_device *phydev)
+{
+	/* min rx data delay */
+	phy_write(phydev, 0x0b, 0x8105);
+	phy_write(phydev, 0x0c, 0x0000);
+
+	/* max rx/tx clock delay, min rx/tx control delay */
+	phy_write(phydev, 0x0b, 0x8104);
+	phy_write(phydev, 0x0c, 0xa0b0);
+}
+
 static void __init pepper_init(void)
 {
 	omap2_hsmmc_init(pepper_mmc);
@@ -335,6 +349,10 @@ static void __init pepper_init(void)
 	omap_serial_init();
 	usb_musb_init(&musb_board_data);
 	pepper_i2c_init();
+	if (IS_ENABLED(CONFIG_PHYLIB))
+		phy_register_fixup_for_uid(PHY_ID_KSZ9021, MICREL_PHY_ID_MASK,
+				ksz9021rn_phy_fixup);
+	am33xx_cpsw_init(AM33XX_CPSW_MODE_RGMII, NULL, NULL);
 	omap_board_config = pepper_config;
 	omap_board_config_size = ARRAY_SIZE(pepper_config);
 }
