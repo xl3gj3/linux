@@ -30,6 +30,7 @@
 #include <plat/board.h>
 #include <plat/common.h>
 #include <plat/mmc.h>
+#include <plat/usb.h>
 
 #include "common.h"
 #include "devices.h"
@@ -72,6 +73,19 @@ void __iomem *am33xx_get_ram_base(void)
 {
 	return pepper_emif_base;
 }
+
+/* musb */
+static struct omap_musb_board_data musb_board_data = {
+	.interface_type	= MUSB_INTERFACE_ULPI,
+	/*
+	 * mode[0:3] = USB0PORT's mode
+	 * mode[4:7] = USB1PORT's mode
+	 * Pepper has USB0 in OTG mode and USB1 in host mode.
+	 */
+	.mode           = (MUSB_HOST << 4) | MUSB_OTG,
+	.power		= 500,
+	.instances	= 1,
+};
 
 /* i2c */
 
@@ -319,6 +333,7 @@ static void __init pepper_init(void)
 	pepper_get_mem_ctlr();
 	omap_sdrc_init(NULL, NULL);
 	omap_serial_init();
+	usb_musb_init(&musb_board_data);
 	pepper_i2c_init();
 	omap_board_config = pepper_config;
 	omap_board_config_size = ARRAY_SIZE(pepper_config);
