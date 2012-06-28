@@ -191,23 +191,31 @@ static int __init ksphy_init(void)
 {
 	int ret;
 
-	ret = phy_driver_register(&ks8001_driver);
+/*	ret = phy_driver_register(&ks8001_driver);
 	if (ret)
 		goto err1;
-
+	printk("registered ks8001 PHY driver\n");
+*/
 	ret = phy_driver_register(&ksz9021_driver);
+	printk("registered ksz9021 PHY driver\n");
+return 0;
 	if (ret)
 		goto err2;
 
 	ret = phy_driver_register(&ks8737_driver);
 	if (ret)
 		goto err3;
+	printk("registered ks8737 PHY driver\n");
+
 	ret = phy_driver_register(&ks8041_driver);
 	if (ret)
 		goto err4;
+	printk("registered ks8041 PHY driver\n");
+
 	ret = phy_driver_register(&ks8051_driver);
 	if (ret)
 		goto err5;
+	printk("registered ks8051 PHY driver\n");
 
 	return 0;
 
