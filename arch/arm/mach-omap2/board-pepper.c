@@ -26,6 +26,7 @@
 
 #include <mach/hardware.h>
 
+#include <asm/hardware/asp.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 
@@ -328,6 +329,28 @@ static void pepper_i2c_init(void)
 	return;
 }
 
+/* sound */
+
+static u8 am335x_iis_serializer_direction1[] = {
+	TX_MODE,	RX_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+};
+
+static struct snd_platform_data pepper_snd_data1 = {
+	.tx_dma_offset	= 0x46000000,	/* McASP0 */
+	.rx_dma_offset	= 0x46000000,
+	.op_mode	= DAVINCI_MCASP_IIS_MODE,
+	.num_serializer	= ARRAY_SIZE(am335x_iis_serializer_direction1),
+	.tdm_slots	= 2,
+	.serial_dir	= am335x_iis_serializer_direction1,
+	.asp_chan_q	= EVENTQ_2,
+	.version	= MCASP_VERSION_3,
+	.txnumevt	= 1,
+	.rxnumevt	= 1,
+};
+
 /* board init */
 
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
@@ -353,6 +376,7 @@ static void __init pepper_init(void)
 		phy_register_fixup_for_uid(PHY_ID_KSZ9021, MICREL_PHY_ID_MASK,
 				ksz9021rn_phy_fixup);
 	am33xx_cpsw_init(AM33XX_CPSW_MODE_RGMII, NULL, NULL);
+	am335x_register_mcasp(&pepper_snd_data1, 0);
 	omap_board_config = pepper_config;
 	omap_board_config_size = ARRAY_SIZE(pepper_config);
 }
