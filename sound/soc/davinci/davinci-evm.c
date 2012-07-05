@@ -85,6 +85,7 @@ static int evm_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0)
 		return ret;
 
+	printk("ALSA:SOC: return from evm_hw_params is 0\n");
 	return 0;
 }
 
@@ -379,15 +380,21 @@ static int __init evm_init(void)
 	} else {
 		printk("ALSA:SOC: no compatible machine!\n");
 		return -EINVAL;
+	}
 
 	evm_snd_device = platform_device_alloc("soc-audio", index);
-	if (!evm_snd_device)
+	if (!evm_snd_device) {
+		printk("ALSA:SOC: no evm_snd_device!\n");
 		return -ENOMEM;
+	}
 
 	platform_set_drvdata(evm_snd_device, evm_snd_dev_data);
 	ret = platform_device_add(evm_snd_device);
 	if (ret)
 		platform_device_put(evm_snd_device);
+	else
+		printk("ALSA:SOC: platform_device_add succeeded, return %d!\n", ret);
+
 
 	return ret;
 }

@@ -753,16 +753,20 @@ static int soc_bind_dai_link(struct snd_soc_card *card, int num)
 	struct snd_soc_dai *codec_dai, *cpu_dai;
 	const char *platform_name;
 
-	if (rtd->complete)
+	if (rtd->complete) {
+		printk("SND:SOC: soc_bind_dai_link, rtd->complete\n");
 		return 1;
-	dev_dbg(card->dev, "binding %s at idx %d\n", dai_link->name, num);
+	}
+	dev_err(card->dev, "binding %s at idx %d\n", dai_link->name, num);
 
 	/* do we already have the CPU DAI for this link ? */
 	if (rtd->cpu_dai) {
 		goto find_codec;
 	}
+	printk("SND:SOC: soc_bind_dai_link #1\n");
 	/* no, then find CPU DAI from registered DAIs*/
 	list_for_each_entry(cpu_dai, &dai_list, list) {
+	printk("SND:SOC: soc_bind_dai_link list_for_each_entry cpu dai loop '%s'='%s'\n", cpu_dai->name, dai_link->cpu_dai_name);
 		if (!strcmp(cpu_dai->name, dai_link->cpu_dai_name)) {
 			rtd->cpu_dai = cpu_dai;
 			goto find_codec;
@@ -772,6 +776,7 @@ static int soc_bind_dai_link(struct snd_soc_card *card, int num)
 			dai_link->cpu_dai_name);
 
 find_codec:
+	printk("SND:SOC: soc_bind_dai_link #2\n");
 	/* do we already have the CODEC for this link ? */
 	if (rtd->codec) {
 		goto find_platform;
@@ -779,27 +784,30 @@ find_codec:
 
 	/* no, then find CODEC from registered CODECs*/
 	list_for_each_entry(codec, &codec_list, list) {
+	printk("SND:SOC: soc_bind_dai_link list_for_each_entry codec loop '%s'='%s'\n", codec->name, dai_link->codec_name);
 		if (!strcmp(codec->name, dai_link->codec_name)) {
 			rtd->codec = codec;
 
 			/* CODEC found, so find CODEC DAI from registered DAIs from this CODEC*/
 			list_for_each_entry(codec_dai, &dai_list, list) {
+				printk("SND:SOC: soc_bind_dai_link list_for_each_entry codec dai loop '%s'='%s'\n", codec_dai->name, dai_link->codec_dai_name);
 				if (codec->dev == codec_dai->dev &&
 						!strcmp(codec_dai->name, dai_link->codec_dai_name)) {
 					rtd->codec_dai = codec_dai;
 					goto find_platform;
 				}
 			}
-			dev_dbg(card->dev, "CODEC DAI %s not registered\n",
+			dev_err(card->dev, "CODEC DAI %s not registered\n",
 					dai_link->codec_dai_name);
 
 			goto find_platform;
 		}
 	}
-	dev_dbg(card->dev, "CODEC %s not registered\n",
+	dev_err(card->dev, "CODEC %s not registered\n",
 			dai_link->codec_name);
 
 find_platform:
+	printk("SND:SOC: soc_bind_dai_link #3\n");
 	/* do we need a platform? */
 	if (rtd->platform)
 		goto out;
@@ -811,19 +819,22 @@ find_platform:
 
 	/* no, then find one from the set of registered platforms */
 	list_for_each_entry(platform, &platform_list, list) {
+		printk("SND:SOC: soc_bind_dai_link list_for_each_entry platform loop '%s'='%s'\n", platform->name, platform_name);
 		if (!strcmp(platform->name, platform_name)) {
 			rtd->platform = platform;
 			goto out;
 		}
 	}
 
-	dev_dbg(card->dev, "platform %s not registered\n",
+	dev_err(card->dev, "platform %s not registered\n",
 			dai_link->platform_name);
 	return 0;
 
 out:
+	printk("SND:SOC: soc_bind_dai_link #4\n");
 	/* mark rtd as complete if we found all 4 of our client devices */
 	if (rtd->codec && rtd->codec_dai && rtd->platform && rtd->cpu_dai) {
+		printk("SND:SOC: soc_bind_dai_link #5\n");
 		rtd->complete = 1;
 		card->num_rtd++;
 	}
@@ -1326,10 +1337,12 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 	struct snd_soc_dai_link *dai_link;
 	int ret, i, order;
 
+printk("SND:SOC: snd_soc_instantiate_card entry\n");
 	mutex_lock(&card->mutex);
 
 	if (card->instantiated) {
 		mutex_unlock(&card->mutex);
+printk("SND:SOC: snd_soc_instantiate_card return 1\n");
 		return;
 	}
 
@@ -1340,6 +1353,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 	/* bind completed ? */
 	if (card->num_rtd != card->num_links) {
 		mutex_unlock(&card->mutex);
+printk("SND:SOC: snd_soc_instantiate_card return 2\n");
 		return;
 	}
 
@@ -1362,6 +1376,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 		ret = snd_soc_init_codec_cache(codec, compress_type);
 		if (ret < 0) {
 			mutex_unlock(&card->mutex);
+printk("SND:SOC: snd_soc_instantiate_card return 3\n");
 			return;
 		}
 	}
@@ -1373,6 +1388,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 		printk(KERN_ERR "asoc: can't create sound card for card %s\n",
 			card->name);
 		mutex_unlock(&card->mutex);
+printk("SND:SOC: snd_soc_instantiate_card return 4\n");
 		return;
 	}
 	card->snd_card->dev = card->dev;
@@ -1510,6 +1526,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 	card->instantiated = 1;
 	snd_soc_dapm_sync(&card->dapm);
 	mutex_unlock(&card->mutex);
+printk("SND:SOC: snd_soc_instantiate_card return 5\n");
 	return;
 
 probe_aux_dev_err:
@@ -1526,6 +1543,8 @@ card_probe_error:
 	snd_card_free(card->snd_card);
 
 	mutex_unlock(&card->mutex);
+printk("SND:SOC: snd_soc_instantiate_card return 6\n");
+
 }
 
 /*
