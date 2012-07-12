@@ -32,8 +32,14 @@
 #include "davinci-i2s.h"
 #include "davinci-mcasp.h"
 
+#ifdef CONFIG_MACH_PEPPER
+#define AUDIO_FORMAT (SND_SOC_DAIFMT_DSP_B | \
+		SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_IB_NF)
+#else
 #define AUDIO_FORMAT (SND_SOC_DAIFMT_DSP_B | \
 		SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_IB_NF)
+#endif
+
 static int evm_hw_params(struct snd_pcm_substream *substream,
 			 struct snd_pcm_hw_params *params)
 {
@@ -89,6 +95,40 @@ static int evm_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static int pepper_hw_params(struct snd_pcm_substream *substream,
+			 struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	int ret = 0;
+	unsigned sysclk;
+
+	/* On Pepper, CODEC gets MCLK uses internal 26MHz clock */
+	if (machine_is_pepper())
+		sysclk = 26000000;
+	else
+		return -EINVAL;
+
+	/* set codec DAI configuration */
+	ret = snd_soc_dai_set_fmt(codec_dai,  AUDIO_FORMAT);
+	if (ret < 0)
+		return ret;
+
+	/* set cpu DAI configuration */
+	ret = snd_soc_dai_set_fmt(cpu_dai, AUDIO_FORMAT);
+	if (ret < 0)
+		return ret;
+
+	/* set the codec system clock */
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, sysclk, SND_SOC_CLOCK_OUT);
+	if (ret < 0)
+		return ret;
+
+	printk("ALSA:SOC: return from pepper_hw_params is 0\n");
+	return 0;
+}
+
 static int evm_spdif_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
@@ -101,6 +141,10 @@ static int evm_spdif_hw_params(struct snd_pcm_substream *substream,
 
 static struct snd_soc_ops evm_ops = {
 	.hw_params = evm_hw_params,
+};
+
+static struct snd_soc_ops pepper_ops = {
+	.hw_params = pepper_hw_params,
 };
 
 static struct snd_soc_ops evm_spdif_ops = {
@@ -164,6 +208,32 @@ static int evm_aic3x_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
+/* Logic for a aic3x as connected on a pepper */
+static int pepper_aic3x_init(struct snd_soc_pcm_runtime *rtd)
+{
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+
+	/* Add pepper specific widgets */
+	snd_soc_dapm_new_controls(dapm, aic3x_dapm_widgets,
+				  ARRAY_SIZE(aic3x_dapm_widgets));
+
+	/* Set up pepper specific audio path audio_map */
+	snd_soc_dapm_add_routes(dapm, audio_map, ARRAY_SIZE(audio_map));
+
+	/* not connected */
+	snd_soc_dapm_disable_pin(dapm, "MONO_LOUT");
+
+	/* always connected */
+	snd_soc_dapm_enable_pin(dapm, "HPLCOM");
+	snd_soc_dapm_enable_pin(dapm, "HPRCOM");
+	snd_soc_dapm_enable_pin(dapm, "Headphone Jack");
+	snd_soc_dapm_enable_pin(dapm, "Line Out");
+	snd_soc_dapm_enable_pin(dapm, "Mic Jack");
+	snd_soc_dapm_enable_pin(dapm, "Line In");
+
+	return 0;
+}
 /* davinci-evm digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link dm6446_evm_dai = {
 	.name = "TLV320AIC3X",
@@ -279,8 +349,8 @@ static struct snd_soc_dai_link pepper_dai = {
 	.codec_dai_name = "tlv320aic3x-hifi",
 	.codec_name = "tlv320aic3x-codec.1-001b",
 	.platform_name = "davinci-pcm-audio",
-	.init = evm_aic3x_init,
-	.ops = &evm_ops,
+	.init = pepper_aic3x_init,
+	.ops = &pepper_ops,
 };
 
 /* davinci dm6446 evm audio machine driver */
