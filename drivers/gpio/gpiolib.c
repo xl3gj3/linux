@@ -1180,6 +1180,8 @@ int gpio_request(unsigned gpio, const char *label)
 	int			status = -EINVAL;
 	unsigned long		flags;
 
+	printk("GPIO REQUEST: %d, '%s'\n", gpio, label);
+
 	spin_lock_irqsave(&gpio_lock, flags);
 
 	if (!gpio_is_valid(gpio))
@@ -1372,6 +1374,8 @@ int gpio_direction_input(unsigned gpio)
 	struct gpio_desc	*desc = &gpio_desc[gpio];
 	int			status = -EINVAL;
 
+	printk("GPIO DIRECTION INPUT: %d\n", gpio);
+
 	spin_lock_irqsave(&gpio_lock, flags);
 
 	if (!gpio_is_valid(gpio))
@@ -1426,6 +1430,8 @@ int gpio_direction_output(unsigned gpio, int value)
 	struct gpio_chip	*chip;
 	struct gpio_desc	*desc = &gpio_desc[gpio];
 	int			status = -EINVAL;
+
+	printk("GPIO DIRECTION OUTPUT: %d\n", gpio);
 
 	spin_lock_irqsave(&gpio_lock, flags);
 
