@@ -376,6 +376,11 @@ static void __init pepper_init(void)
 		phy_register_fixup_for_uid(PHY_ID_KSZ9021, MICREL_PHY_ID_MASK,
 				ksz9021rn_phy_fixup);
 	am33xx_cpsw_init(AM33XX_CPSW_MODE_RGMII, NULL, NULL);
+	gpio_request(48, "audio nreset");
+	gpio_export(48, 0);
+	gpio_direction_output(48, 0);
+	gpio_set_value(48, 0);
+	gpio_set_value(48, 1);
 	am335x_register_mcasp(&pepper_snd_data1, 0);
 	omap_board_config = pepper_config;
 	omap_board_config_size = ARRAY_SIZE(pepper_config);
