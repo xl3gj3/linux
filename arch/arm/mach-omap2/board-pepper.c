@@ -35,6 +35,9 @@
 #include <plat/common.h>
 #include <plat/mmc.h>
 #include <plat/usb.h>
+#include <plat/lcdc.h>
+
+#include <video/da8xx-fb.h>
 
 #include "common.h"
 #include "devices.h"
@@ -351,6 +354,55 @@ static struct snd_platform_data pepper_snd_data1 = {
 	.rxnumevt	= 1,
 };
 
+/* lcd */
+
+static const struct display_panel disp_panel = {
+	WVGA,
+	32,
+	32,
+	COLOR_ACTIVE,
+};
+
+static struct lcd_ctrl_config lcd_cfg = {
+	&disp_panel,
+	.ac_bias		= 255,
+	.ac_bias_intrpt		= 0,
+	.dma_burst_sz		= 16,
+	.bpp			= 32,
+	.fdd			= 0x80,
+	.tft_alt_mode		= 0,
+	.stn_565_mode		= 0,
+	.mono_8bit_mode		= 0,
+	.invert_line_clock	= 1,
+	.invert_frm_clock	= 1,
+	.sync_edge		= 0,
+	.sync_ctrl		= 1,
+	.raster_order		= 0,
+};
+
+struct da8xx_lcdc_platform_data lcdc_pdata = {
+	.manu_name		= "Sharp",
+	.controller_data	= &lcd_cfg,
+	.type			= "Sharp_LK043T1DG01",
+};
+
+static int __init conf_disp_pll(int rate)
+{
+	struct clk *disp_pll;
+	int ret = -EINVAL;
+
+	disp_pll = clk_get(NULL, "dpll_disp_ck");
+	if (IS_ERR(disp_pll)) {
+		pr_err("Cannot clk_get disp_pll\n");
+		goto out;
+	}
+
+	ret = clk_set_rate(disp_pll, rate);
+	clk_put(disp_pll);
+out:
+	return ret;
+}
+
 /* board init */
 
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
@@ -382,6 +434,15 @@ static void __init pepper_init(void)
 	gpio_set_value(48, 0);
 	gpio_set_value(48, 1);
 	am335x_register_mcasp(&pepper_snd_data1, 0);
+
+	/* lcd init */
+	gpio_request(59, "lcd enable");
+	gpio_export(59, 0);
+	gpio_direction_output(59, 0);
+	gpio_set_value(59, 1);
+	conf_disp_pll(300000000);
+	if (am33xx_register_lcdc(&lcdc_pdata))
+		pr_info("Failed to register LCDC device\n");
 	omap_board_config = pepper_config;
 	omap_board_config_size = ARRAY_SIZE(pepper_config);
 }
