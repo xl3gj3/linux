@@ -38,6 +38,7 @@
 #include <plat/lcdc.h>
 
 #include <video/da8xx-fb.h>
+#include <linux/input/ti_tscadc.h>
 
 #include "common.h"
 #include "devices.h"
@@ -403,6 +404,12 @@ out:
 	return ret;
 }
 
+/* touchscreen controller */
+static struct tsc_data am335x_touchscreen_data  = {
+	.wires  = 4,
+	.x_plate_resistance = 200,
+};
+
 /* board init */
 
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
@@ -443,6 +450,11 @@ static void __init pepper_init(void)
 	conf_disp_pll(300000000);
 	if (am33xx_register_lcdc(&lcdc_pdata))
 		pr_info("Failed to register LCDC device\n");
+
+	/* touchscreen init */
+	if (am33xx_register_tsc(&am335x_touchscreen_data))
+		pr_err("failed to register touchscreen device\n");
+
 	omap_board_config = pepper_config;
 	omap_board_config_size = ARRAY_SIZE(pepper_config);
 }
