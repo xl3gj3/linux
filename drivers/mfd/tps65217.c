@@ -189,6 +189,9 @@ static int __devinit tps65217_probe(struct i2c_client *client,
 		platform_device_add(pdev);
 	}
 
+	tps65217_reg_write(tps, TPS65217_REG_WLEDCTRL1, 0x08, TPS65217_PROTECT_NONE);
+	tps65217_reg_write(tps, TPS65217_REG_WLEDCTRL2, 0x32, TPS65217_PROTECT_NONE);
+
 	return 0;
 
 err_regmap:
