@@ -40,6 +40,8 @@
 #include <video/da8xx-fb.h>
 #include <linux/input/ti_tscadc.h>
 
+#include <linux/wl12xx.h>
+
 #include "common.h"
 #include "devices.h"
 #include "hsmmc.h"
@@ -50,16 +52,33 @@
 static struct omap_board_config_kernel pepper_config[] __initdata = {
 };
 
-/* mmc0 */
+/* mmc */
 
 static struct omap2_hsmmc_info pepper_mmc[] __initdata = {
 	{
 		.mmc            = 1,
 		.caps           = MMC_CAP_4_BIT_DATA,
 		.gpio_cd        = GPIO_TO_PIN(0, 6),
+		.gpio_wp	= -EINVAL,
+		.ocr_mask       = MMC_VDD_32_33 | MMC_VDD_33_34, /* 3V3 */
+	},
+	{
+		.mmc            = 3,
+		.name		= "wl1271",
+		.caps           = MMC_CAP_4_BIT_DATA | MMC_CAP_POWER_OFF_CARD,
+		.nonremovable	= true,
+		.gpio_cd        = -EINVAL,
+		.gpio_wp	= -EINVAL,
 		.ocr_mask       = MMC_VDD_32_33 | MMC_VDD_33_34, /* 3V3 */
 	},
 	{}      /* Terminator */
+};
+
+struct wl12xx_platform_data am335xevm_wlan_data = {
+	.irq = OMAP_GPIO_IRQ(57),
+	.board_ref_clock = WL12XX_REFCLOCK_26, /* 26 Mhz */
+	.bt_enable_gpio = 58,
+	.wlan_enable_gpio = 56,
 };
 
 /* emif */
@@ -454,6 +473,19 @@ static void __init pepper_init(void)
 	/* touchscreen init */
 	if (am33xx_register_tsc(&am335x_touchscreen_data))
 		pr_err("failed to register touchscreen device\n");
+
+	/* wl1271 init */
+	gpio_request(56, "wlan enable");
+	gpio_export(56, 0);
+	gpio_direction_output(56, 0);
+	gpio_set_value(56, 1);
+
+	gpio_request(58, "bt enable");
+	gpio_export(58, 0);
+	gpio_direction_output(58, 0);
+	gpio_set_value(58, 1);
+	if (wl12xx_set_platform_data(&am335xevm_wlan_data))
+		pr_err("error setting wl12xx data\n");
 
 	omap_board_config = pepper_config;
 	omap_board_config_size = ARRAY_SIZE(pepper_config);
