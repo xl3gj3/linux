@@ -1094,10 +1094,12 @@ int mmc_regulator_set_ocr(struct mmc_host *mmc,
 	int			result = 0;
 	int			min_uV, max_uV;
 
+	dev_err(mmc_dev(mmc), "mmc_regulator_set_ocr (vdd_bit=%d, supply=%d)\n", vdd_bit, supply);
 	if (vdd_bit) {
 		int		tmp;
 		int		voltage;
 
+		dev_err(mmc_dev(mmc), "mmc_regulator_set_ocr vdd_bit path\n");
 		/* REVISIT mmc_vddrange_to_ocrmask() may have set some
 		 * bits this regulator doesn't quite support ... don't
 		 * be too picky, most cards and regulators are OK with
@@ -1112,10 +1114,13 @@ int mmc_regulator_set_ocr(struct mmc_host *mmc,
 			max_uV = min_uV + 100 * 1000;
 		}
 
+		dev_err(mmc_dev(mmc), "min_uV = %d max_uV = %d \n", min_uV, max_uV);
 		/* avoid needless changes to this voltage; the regulator
 		 * might not allow this operation
 		 */
 		voltage = regulator_get_voltage(supply);
+		dev_err(mmc_dev(mmc), "voltage = %d \n", voltage);
+		dev_err(mmc_dev(mmc), "mmc->regulator_enabled = %d \n", mmc->regulator_enabled);
 		if (voltage < 0)
 			result = voltage;
 		else if (voltage < min_uV || voltage > max_uV)
@@ -1129,6 +1134,7 @@ int mmc_regulator_set_ocr(struct mmc_host *mmc,
 				mmc->regulator_enabled = true;
 		}
 	} else if (mmc->regulator_enabled) {
+		dev_err(mmc_dev(mmc), "mmc_regulator_set_ocr !vdd_bit path\n");
 		result = regulator_disable(supply);
 		if (result == 0)
 			mmc->regulator_enabled = false;
@@ -2016,10 +2022,10 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 {
 	host->f_init = freq;
 
-#ifdef CONFIG_MMC_DEBUG
-	pr_info("%s: %s: trying to init card at %u Hz\n",
+//#ifdef CONFIG_MMC_DEBUG
+	printk("%s: %s: trying to init card at %u Hz\n",
 		mmc_hostname(host), __func__, host->f_init);
-#endif
+//#endif
 	mmc_power_up(host);
 
 	/*

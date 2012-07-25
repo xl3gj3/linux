@@ -110,7 +110,7 @@ static int really_probe(struct device *dev, struct device_driver *drv)
 	int ret = 0;
 
 	atomic_inc(&probe_count);
-	pr_debug("bus: '%s': %s: probing driver %s with device %s\n",
+	printk("bus: '%s': %s: probing driver %s with device %s\n",
 		 drv->bus->name, __func__, drv->name, dev_name(dev));
 	WARN_ON(!list_empty(&dev->devres_head));
 
@@ -133,7 +133,7 @@ static int really_probe(struct device *dev, struct device_driver *drv)
 
 	driver_bound(dev);
 	ret = 1;
-	pr_debug("bus: '%s': %s: bound device %s to driver %s\n",
+	printk("bus: '%s': %s: bound device %s to driver %s\n",
 		 drv->bus->name, __func__, dev_name(dev), drv->name);
 	goto done;
 
@@ -145,7 +145,7 @@ probe_failed:
 	if (ret != -ENODEV && ret != -ENXIO) {
 		/* driver matched but the probe failed */
 		printk(KERN_WARNING
-		       "%s: probe of %s failed with error %d\n",
+		       "%s: really_probe of %s failed with error %d\n",
 		       drv->name, dev_name(dev), ret);
 	} else {
 		pr_debug("%s: probe of %s rejects match %d\n",

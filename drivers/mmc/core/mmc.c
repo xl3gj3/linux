@@ -1268,14 +1268,20 @@ int mmc_attach_mmc(struct mmc_host *host)
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
 
+	printk("mmc_attach_mmc entry\n");
+
 	/* Set correct bus mode for MMC before attempting attach */
 	if (!mmc_host_is_spi(host))
 		mmc_set_bus_mode(host, MMC_BUSMODE_OPENDRAIN);
 
+	printk("mmc_attach_mmc: getting ocr\n");
 	err = mmc_send_op_cond(host, 0, &ocr);
-	if (err)
+	if (err) {
+		printk("mmc_attach_mmc: ERROR getting ocr: %d\n", err);
 		return err;
+	}
 
+	printk("mmc_attach_mmc: ocr=%x\n", ocr);
 	mmc_attach_bus_ops(host);
 	if (host->ocr_avail_mmc)
 		host->ocr_avail = host->ocr_avail_mmc;
@@ -1300,6 +1306,7 @@ int mmc_attach_mmc(struct mmc_host *host)
 		ocr &= ~0x7F;
 	}
 
+	printk("mmc_attach_mmc: calling mmc_select_voltage\n");
 	host->ocr = mmc_select_voltage(host, ocr);
 
 	/*
@@ -1313,6 +1320,7 @@ int mmc_attach_mmc(struct mmc_host *host)
 	/*
 	 * Detect and init the card.
 	 */
+	printk("mmc_attach_mmc: calling mmc_init_card\n");
 	err = mmc_init_card(host, host->ocr, NULL);
 	if (err)
 		goto err;

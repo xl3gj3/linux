@@ -289,6 +289,8 @@ static int omap_hsmmc_235_set_power(struct device *dev, int slot, int power_on,
 		platform_get_drvdata(to_platform_device(dev));
 	int ret = 0;
 
+	printk("omap_hsmmc_235_set_power entry (host->vcc=%x)\n", host->vcc);
+
 	/*
 	 * If we don't see a Vcc regulator, assume it's a fixed
 	 * voltage always-on regulator.
@@ -296,6 +298,7 @@ static int omap_hsmmc_235_set_power(struct device *dev, int slot, int power_on,
 	if (!host->vcc)
 		return 0;
 
+	printk("omap_hsmmc_235_set_power 1\n");
 	if (mmc_slot(host).before_set_reg)
 		mmc_slot(host).before_set_reg(dev, slot, power_on, vdd);
 
@@ -313,6 +316,7 @@ static int omap_hsmmc_235_set_power(struct device *dev, int slot, int power_on,
 	 * chips/cards need an interface voltage rail too.
 	 */
 	if (power_on) {
+	printk("omap_hsmmc_235_set_power 2\n");
 		ret = mmc_regulator_set_ocr(host->mmc, host->vcc, vdd);
 		/* Enable interface voltage rail, if needed */
 		if (ret == 0 && host->vcc_aux) {
@@ -322,6 +326,7 @@ static int omap_hsmmc_235_set_power(struct device *dev, int slot, int power_on,
 							host->vcc, 0);
 		}
 	} else {
+	printk("omap_hsmmc_235_set_power 3\n");
 		/* Shut down the rail */
 		if (host->vcc_aux)
 			ret = regulator_disable(host->vcc_aux);
@@ -332,6 +337,7 @@ static int omap_hsmmc_235_set_power(struct device *dev, int slot, int power_on,
 		}
 	}
 
+	printk("omap_hsmmc_235_set_power 4\n");
 	if (mmc_slot(host).after_set_reg)
 		mmc_slot(host).after_set_reg(dev, slot, power_on, vdd);
 
@@ -428,7 +434,7 @@ static int omap_hsmmc_reg_get(struct omap_hsmmc_host *host)
 
 	reg = regulator_get(host->dev, "vmmc");
 	if (IS_ERR(reg)) {
-		dev_dbg(host->dev, "vmmc regulator missing\n");
+		printk(host->dev, "vmmc regulator missing\n");
 		/*
 		* HACK: until fixed.c regulator is usable,
 		* we don't require a main regulator
@@ -1910,37 +1916,47 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 	struct resource *res, *dma_tx, *dma_rx;
 	int ret, irq;
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe entry\n");
+
 	if (pdata == NULL) {
 		dev_err(&pdev->dev, "Platform Data is missing\n");
 		return -ENXIO;
 	}
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe 1\n");
 	if (pdata->nr_slots == 0) {
 		dev_err(&pdev->dev, "No Slots\n");
 		return -ENXIO;
 	}
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe 2\n");
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	irq = platform_get_irq(pdev, 0);
 	if (res == NULL || irq < 0)
 		return -ENXIO;
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe 3\n");
 	res->start += pdata->reg_offset;
 	res->end += pdata->reg_offset;
 	res = request_mem_region(res->start, resource_size(res), pdev->name);
-	if (res == NULL)
+	if (res == NULL) {
+		printk("RETURNING -EBUSY\n");
 		return -EBUSY;
+	}
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe 4\n");
 	ret = omap_hsmmc_gpio_init(pdata);
 	if (ret)
 		goto err;
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe 5\n");
 	mmc = mmc_alloc_host(sizeof(struct omap_hsmmc_host), &pdev->dev);
 	if (!mmc) {
 		ret = -ENOMEM;
 		goto err_alloc;
 	}
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe 6\n");
 	host		= mmc_priv(mmc);
 	host->mmc	= mmc;
 	host->pdata	= pdata;
@@ -1980,6 +1996,7 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe 7\n");
 	omap_hsmmc_context_save(host);
 
 	mmc->caps |= MMC_CAP_DISABLE;
@@ -2082,6 +2099,7 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 		}
 	}
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe 8\n");
 	/* Request IRQ for MMC operations */
 	ret = request_irq(host->irq, omap_hsmmc_irq, 0,
 			mmc_hostname(mmc), host);
@@ -2090,6 +2108,7 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 		goto err_irq;
 	}
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe 9\n");
 	if (pdata->init != NULL) {
 		if (pdata->init(&pdev->dev) != 0) {
 			dev_dbg(mmc_dev(host->mmc),
@@ -2098,6 +2117,7 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 		}
 	}
 
+	dev_err(&pdev->dev, "omap_hsmmc_probe 10\n");
 	if (omap_hsmmc_have_reg() && !mmc_slot(host).set_power) {
 		ret = omap_hsmmc_reg_get(host);
 		if (ret)
