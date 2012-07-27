@@ -141,20 +141,26 @@ int mmc_send_op_cond(struct mmc_host *host, u32 ocr, u32 *rocr)
 
 	for (i = 100; i; i--) {
 		err = mmc_wait_for_cmd(host, &cmd, 0);
-		if (err)
+		if (err) {
+			printk("mmc_send_op_cond: error in mmc_wait_for_cmd: %d\n", err);
 			break;
+		}
 
 		/* if we're just probing, do a single pass */
-		if (ocr == 0)
+		if (ocr == 0){
+			printk("mmc_send_op_cond: ocr = 0\n");
 			break;
+		}
 
 		/* otherwise wait until reset completes */
 		if (mmc_host_is_spi(host)) {
 			if (!(cmd.resp[0] & R1_SPI_IDLE))
 				break;
 		} else {
-			if (cmd.resp[0] & MMC_CARD_BUSY)
+			if (cmd.resp[0] & MMC_CARD_BUSY) {
+			printk("mmc_send_op_cond: cmd.resp[0] & MMC_CARD_BUSY\n");
 				break;
+			}
 		}
 
 		err = -ETIMEDOUT;
@@ -164,6 +170,8 @@ int mmc_send_op_cond(struct mmc_host *host, u32 ocr, u32 *rocr)
 
 	if (rocr && !mmc_host_is_spi(host))
 		*rocr = cmd.resp[0];
+
+	printk("mmc_send_op_cond: returning %d\n", err);
 
 	return err;
 }
