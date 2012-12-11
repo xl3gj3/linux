@@ -21,6 +21,9 @@
 #include <linux/err.h>
 #include <linux/reboot.h>
 
+#include <linux/regulator/machine.h>
+#include <linux/regulator/fixed.h>
+
 #include <linux/phy.h>
 #include <linux/micrel_phy.h>
 
@@ -63,22 +66,50 @@ static struct omap2_hsmmc_info pepper_mmc[] __initdata = {
 		.ocr_mask       = MMC_VDD_32_33 | MMC_VDD_33_34, /* 3V3 */
 	},
 	{
-		.mmc            = 3,
-		.name		= "wl1271",
-		.caps           = MMC_CAP_4_BIT_DATA | MMC_CAP_POWER_OFF_CARD,
+		.mmc            = 2,
+		.caps           = MMC_CAP_8_BIT_DATA,
 		.nonremovable	= true,
 		.gpio_cd        = -EINVAL,
 		.gpio_wp	= -EINVAL,
 		.ocr_mask       = MMC_VDD_32_33 | MMC_VDD_33_34, /* 3V3 */
 	},
+	{
+		.mmc            = 3,
+		.caps           = MMC_CAP_4_BIT_DATA,
+		.nonremovable	= true,
+		.gpio_cd        = -EINVAL,
+		.gpio_wp	= -EINVAL,
+		.ocr_mask       = 0x00100000, /* 3V3 */
+	},
 	{}      /* Terminator */
 };
 
-struct wl12xx_platform_data am335xevm_wlan_data = {
-	.irq = OMAP_GPIO_IRQ(57),
-	.board_ref_clock = WL12XX_REFCLOCK_26, /* 26 Mhz */
-	.bt_enable_gpio = 58,
-	.wlan_enable_gpio = 56,
+static struct regulator_consumer_supply pepper_vmmc3_supply[] = {
+	REGULATOR_SUPPLY("vmmc", "omap_hsmmc.2"),
+};
+
+static struct regulator_init_data pepper_vmmc3 = {
+	.constraints = {
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies = ARRAY_SIZE(pepper_vmmc3_supply),
+	.consumer_supplies = pepper_vmmc3_supply,
+};
+
+static struct fixed_voltage_config pepper_wlan = {
+	.supply_name		= "vwlan",
+	.microvolts		= 3300000, /* 3.3V */
+	.gpio			= -EINVAL,
+	.startup_delay		= 0,
+	.init_data		= &pepper_vmmc3,
+};
+
+static struct platform_device pepper_wlan_device = {
+	.name		= "reg-fixed-voltage",
+	.id		= 1,
+	.dev = {
+		.platform_data = &pepper_wlan,
+	},
 };
 
 /* emif */
@@ -444,6 +475,7 @@ static int ksz9021rn_phy_fixup(struct phy_device *phydev)
 
 static void __init pepper_init(void)
 {
+	platform_device_register(&pepper_wlan_device);
 	omap2_hsmmc_init(pepper_mmc);
 	pepper_get_mem_ctlr();
 	omap_sdrc_init(NULL, NULL);
@@ -473,19 +505,6 @@ static void __init pepper_init(void)
 	/* touchscreen init */
 	if (am33xx_register_tsc(&am335x_touchscreen_data))
 		pr_err("failed to register touchscreen device\n");
-
-	/* wl1271 init */
-	gpio_request(56, "wlan enable");
-	gpio_export(56, 0);
-	gpio_direction_output(56, 0);
-	gpio_set_value(56, 1);
-
-	gpio_request(58, "bt enable");
-	gpio_export(58, 0);
-	gpio_direction_output(58, 0);
-	gpio_set_value(58, 1);
-	if (wl12xx_set_platform_data(&am335xevm_wlan_data))
-		pr_err("error setting wl12xx data\n");
 
 	omap_board_config = pepper_config;
 	omap_board_config_size = ARRAY_SIZE(pepper_config);
