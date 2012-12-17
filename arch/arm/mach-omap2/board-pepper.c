@@ -563,13 +563,19 @@ static int am335x_rtc_init(void)
 
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
 {
+	/* max rx/tx clock delay, min rx/tx control delay */
+	phy_write(phydev, 0x0b, 0x8104);
+	phy_write(phydev, 0x0c, 0xa0a0);
+
 	/* min rx data delay */
 	phy_write(phydev, 0x0b, 0x8105);
 	phy_write(phydev, 0x0c, 0x0000);
 
-	/* max rx/tx clock delay, min rx/tx control delay */
-	phy_write(phydev, 0x0b, 0x8104);
-	phy_write(phydev, 0x0c, 0xa0b0);
+	/* min tx data delay */
+	phy_write(phydev, 0x0b, 0x8106);
+	phy_write(phydev, 0x0c, 0x0000);
+
+	return 0;
 }
 
 static void __init pepper_init(void)
