@@ -48,6 +48,7 @@
 #include "common.h"
 #include "devices.h"
 #include "hsmmc.h"
+#include "mux.h"
 
 /* Convert GPIO signal to GPIO pin number */
 #define GPIO_TO_PIN(bank, gpio) (32 * (bank) + (gpio))
@@ -460,6 +461,104 @@ static struct tsc_data am335x_touchscreen_data  = {
 	.x_plate_resistance = 200,
 };
 
+/* Enable clkout2 */
+struct pinmux_config {
+	const char *string_name; /* signal name format */
+	int val; /* Options for the mux register value */
+};
+
+static void setup_pin_mux(struct pinmux_config *pin_mux)
+{
+	int i;
+
+	for (i = 0; pin_mux->string_name != NULL; pin_mux++)
+		omap_mux_init_signal(pin_mux->string_name, pin_mux->val);
+
+}
+
+static struct pinmux_config clkout2_pin_mux[] = {
+	{"xdma_event_intr1.clkout2", OMAP_MUX_MODE3 | AM33XX_PIN_OUTPUT},
+	{NULL, 0},
+};
+
+static void __init clkout2_enable(void)
+{
+	struct clk *ck_32;
+
+	ck_32 = clk_get(NULL, "clkout2_ck");
+	if (IS_ERR(ck_32)) {
+		pr_err("Cannot clk_get ck_32\n");
+		return;
+	}
+
+	clk_enable(ck_32);
+	setup_pin_mux(clkout2_pin_mux);
+}
+
+/* rtc */
+static struct resource am335x_rtc_resources[] = {
+	{
+		.start		= AM33XX_RTC_BASE,
+		.end		= AM33XX_RTC_BASE + SZ_4K - 1,
+		.flags		= IORESOURCE_MEM,
+	},
+	{ /* timer irq */
+		.start		= AM33XX_IRQ_RTC_TIMER,
+		.end		= AM33XX_IRQ_RTC_TIMER,
+		.flags		= IORESOURCE_IRQ,
+	},
+	{ /* alarm irq */
+		.start		= AM33XX_IRQ_RTC_ALARM,
+		.end		= AM33XX_IRQ_RTC_ALARM,
+		.flags		= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device am335x_rtc_device = {
+	.name           = "omap_rtc",
+	.id             = -1,
+	.num_resources	= ARRAY_SIZE(am335x_rtc_resources),
+	.resource	= am335x_rtc_resources,
+};
+
+static int am335x_rtc_init(void)
+{
+	void __iomem *base;
+	struct clk *clk;
+
+	clk = clk_get(NULL, "rtc_fck");
+	if (IS_ERR(clk)) {
+		pr_err("rtc : Failed to get RTC clock\n");
+		return -1;
+	}
+
+	if (clk_enable(clk)) {
+		pr_err("rtc: Clock Enable Failed\n");
+		return -1;
+	}
+
+	base = ioremap(AM33XX_RTC_BASE, SZ_4K);
+
+	if (WARN_ON(!base))
+		return -ENOMEM;
+
+	/* Unlock the rtc's registers */
+	writel(0x83e70b13, base + 0x6c);
+	writel(0x95a4f1e0, base + 0x70);
+
+	/*
+	 * Enable the 32K OSc
+	 * TODO: Need a better way to handle this
+	 * Since we want the clock to be running before mmc init
+	 * we need to do it before the rtc probe happens
+	 */
+	writel(0x48, base + 0x54);
+
+	iounmap(base);
+
+	return  platform_device_register(&am335x_rtc_device);
+}
+
 /* board init */
 
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
@@ -475,17 +574,21 @@ static int ksz9021rn_phy_fixup(struct phy_device *phydev)
 
 static void __init pepper_init(void)
 {
-	platform_device_register(&pepper_wlan_device);
+	omap_serial_init();
+	am335x_rtc_init();
+	clkout2_enable();
+	pepper_i2c_init();
 	omap2_hsmmc_init(pepper_mmc);
+	platform_device_register(&pepper_wlan_device);
 	pepper_get_mem_ctlr();
 	omap_sdrc_init(NULL, NULL);
-	omap_serial_init();
 	usb_musb_init(&musb_board_data);
-	pepper_i2c_init();
 	if (IS_ENABLED(CONFIG_PHYLIB))
 		phy_register_fixup_for_uid(PHY_ID_KSZ9021, MICREL_PHY_ID_MASK,
 				ksz9021rn_phy_fixup);
 	am33xx_cpsw_init(AM33XX_CPSW_MODE_RGMII, NULL, NULL);
+
+	/* audio init */
 	gpio_request(48, "audio nreset");
 	gpio_export(48, 0);
 	gpio_direction_output(48, 0);
