@@ -287,6 +287,20 @@ static struct da8xx_panel known_lcd_panels[] = {
 		.pxl_clk = 9000000,
 		.invert_pxl_clk = 0,
 	},
+	/* Samsung LMS430 */
+	[4] = {
+		.name = "Samsung_LMS430",
+		.width = 480,
+		.height = 272,
+		.hfp = 8,
+		.hbp = 4,
+		.hsw = 41,
+		.vfp = 4,
+		.vbp = 2,
+		.vsw = 10,
+		.pxl_clk = 9200000,
+		.invert_pxl_clk = 0,
+	},
 };
 
 /* Enable the Raster Engine of the LCD Controller */

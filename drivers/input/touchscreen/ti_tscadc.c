@@ -246,7 +246,10 @@ static irqreturn_t tscadc_interrupt(int irq, void *dev)
 
 			prev_val_x = readx1;
 			ready1 = tscadc_readl(ts_dev, TSCADC_REG_FIFO1);
-				ready1 &= 0xfff;
+			ready1 &= 0xfff;
+			// invert y axis
+			ready1 = 0xe93 - ready1 + 0xc8;
+
 			if (ready1 > prev_val_y)
 				cur_diff_y = ready1 - prev_val_y;
 			else

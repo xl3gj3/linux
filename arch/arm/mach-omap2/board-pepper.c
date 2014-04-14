@@ -407,6 +407,7 @@ static struct snd_platform_data pepper_snd_data1 = {
 };
 
 /* lcd */
+#define GPIO_LCD_ENABLE	GPIO_TO_PIN(1, 27)
 
 static const struct display_panel disp_panel = {
 	WVGA,
@@ -432,10 +433,16 @@ static struct lcd_ctrl_config lcd_cfg = {
 	.raster_order		= 0,
 };
 
+static void pepper_panel_power_ctrl(int val)
+{
+	gpio_set_value(GPIO_LCD_ENABLE, val);
+}
+
 struct da8xx_lcdc_platform_data lcdc_pdata = {
-	.manu_name		= "Sharp",
+	.manu_name		= "Samsung",
 	.controller_data	= &lcd_cfg,
-	.type			= "Sharp_LK043T1DG01",
+	.type			= "Samsung_LMS430",
+	.panel_power_ctrl	= pepper_panel_power_ctrl,
 };
 
 static int __init conf_disp_pll(int rate)
@@ -607,7 +614,7 @@ static void __init pepper_init(void)
 	gpio_export(59, 0);
 	gpio_direction_output(59, 0);
 	gpio_set_value(59, 1);
-	conf_disp_pll(300000000);
+	conf_disp_pll(18400000);
 	if (am33xx_register_lcdc(&lcdc_pdata))
 		pr_info("Failed to register LCDC device\n");
 
