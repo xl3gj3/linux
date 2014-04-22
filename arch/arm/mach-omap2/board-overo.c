@@ -607,12 +607,89 @@ static struct i2c_board_info __initdata overo_i2c_boardinfo[] = {
 	},
 };
 
+/* Include V4L2 ISP-Camera driver related header file */
+#include <../drivers/media/video/omap34xxcam.h>
+#include <../drivers/media/video/mt9v032.h>
+
+#define MT9V032_I2C_ADDR		(0x5C)
+
+static struct isp_interface_config mt9v032_interface_config = {
+	.ccdc_par_ser			= ISP_PARLL,
+	.dataline_shift			= 0x0,
+	.hsvs_syncdetect		= ISPCTRL_SYNC_DETECT_VSRISE,
+	.strobe				= 0x0,
+	.prestrobe			= 0x0,
+	.shutter			= 0x0,
+	.prev_sph			= 2,
+	.prev_slv			= 9,
+	.wenlog				= ISPCCDC_CFG_WENLOG_OR,
+	.wait_hs_vs			= 2,
+	.u.par.par_bridge		= 0x0,
+	.u.par.par_clk_pol		= 0x0,					/* non inverted */
+};
+
+static int mt9v032_sensor_set_power(struct v4l2_int_device *s, enum v4l2_power power)
+{
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+
+	switch (power)
+	{
+		case V4L2_POWER_ON:
+			isp_configure_interface(vdev->cam->isp, &mt9v032_interface_config);
+			break;
+		case V4L2_POWER_OFF:
+			break;
+		case V4L2_POWER_STANDBY:
+			break;
+	}
+	return 0;
+}
+
+static u32 mt9v032_sensor_set_xclk(struct v4l2_int_device *s, u32 xclkfreq)
+{
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+	return isp_set_xclk(vdev->cam->isp, xclkfreq, OMAP34XXCAM_XCLK_A);
+}
+
+static int mt9v032_sensor_set_priv_data(void *priv)
+{
+	struct omap34xxcam_hw_config *hwc = priv;
+
+	hwc->u.sensor.sensor_isp		= 0;
+	hwc->u.sensor.capture_mem		= PAGE_ALIGN(752 * 480 * 2) * 16;
+	hwc->dev_index				= 0;
+	hwc->dev_minor				= 0;
+	hwc->dev_type				= OMAP34XXCAM_SLAVE_SENSOR;
+
+	return 0;
+}
+
+/*
+ * structure containing pointers to i2c camera functions
+ */
+static struct mt9v032_platform_data mt9v032_platform_data = {
+	.set_power		= mt9v032_sensor_set_power,
+	.set_xclk		= mt9v032_sensor_set_xclk,
+	.set_priv_data		= mt9v032_sensor_set_priv_data,
+};
+
+/*
+ * structure used to initialize i2c communications to camera
+ */
+static struct i2c_board_info __initdata mt9v032_i2c_board_info[] = {
+	{
+		I2C_BOARD_INFO("mt9v032", MT9V032_I2C_ADDR),
+		.platform_data	= &mt9v032_platform_data,
+	},
+};
+
 static int __init overo_i2c_init(void)
 {
 	omap_register_i2c_bus(1, 2600, overo_i2c_boardinfo,
 			ARRAY_SIZE(overo_i2c_boardinfo));
 	/* i2c2 pins are used for gpio */
-	omap_register_i2c_bus(3, 400, NULL, 0);
+	omap_register_i2c_bus(3, 400, mt9v032_i2c_board_info, 
+			ARRAY_SIZE(mt9v032_i2c_board_info));
 	return 0;
 }
 

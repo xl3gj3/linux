@@ -12,6 +12,11 @@ config ARCH_OMAP2430
 	depends on ARCH_OMAP2
 	select ARCH_OMAP_OTG
 
+config ARCH_OMAP34XX
+	bool "OMAP34xx Based System"
+	depends on ARCH_OMAP3
+	select USB_ARCH_HAS_EHCI
+
 config ARCH_OMAP3430
 	bool "OMAP3430 support"
 	depends on ARCH_OMAP3
